@@ -4,6 +4,7 @@ import sys
 from PyQt4.QtGui import QPixmap
 import time
 from maki_lib.mic.Mic import MicTransmitter
+import signal
 
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 
@@ -212,4 +213,7 @@ if __name__ == '__main__':
     app = QtGui.QApplication([])
     window = MainWindow()
     window.show()
+    
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     app.exec_()
