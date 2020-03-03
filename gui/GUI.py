@@ -8,6 +8,19 @@ import signal
 
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 
+class getResulsResponse(QtCore.QThread):
+    def __init__(self, parent=None):
+        QtCore.QThread.__init__(self)
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        # HTTP Request -- using sync_wait() for now
+        print('Waiting for HTTP request for results ...')
+        #self.sleep(5)
+        self.parent().micTX.sync_wait()
+
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -28,10 +41,15 @@ class MainWindow(QtGui.QMainWindow):
         self.central_widget.addWidget(start_screen)
 
     def callbackStartDemoButton(self):
+        user_screen = SelectUserScreen(self)
+        self.central_widget.addWidget(user_screen)
+        self.central_widget.setCurrentWidget(user_screen)
+    
+    def callbackUserButton(self):
         act_screen = ActivityOneScreen(self)
         self.central_widget.addWidget(act_screen)
         self.central_widget.setCurrentWidget(act_screen)
-    
+
     def callbackStartActButton(self):
         act1_screen = PlayActOneScreen(self)
         self.central_widget.addWidget(act1_screen)
@@ -44,18 +62,17 @@ class MainWindow(QtGui.QMainWindow):
 
         process_screen = ProcessingScreen(self)
         self.central_widget.addWidget(process_screen)
-        self.central_widget.setCurrentWidget(process_screen)
+        self.central_widget.setCurrentWidget(process_screen) 
 
-        # HTTP Request -- using sync_wait() for now
-        print('Waiting for HTTP request for results ...')
-        self.micTX.sync_wait()
+        self.resp_thread = getResulsResponse(self)
+        self.connect(self.resp_thread, QtCore.SIGNAL("finished()"), self.callbackResultsScreen)
+        self.resp_thread.start()
 
-        # Add code here to wait for results
-        # Based on results initlizie the proper screen  
-
+    def callbackResultsScreen(self):
+        #TODO: change this to change appropriatly 
         results_screen_A = ResultsScreenA(self)
         self.central_widget.addWidget(results_screen_A)
-        self.central_widget.setCurrentWidget(results_screen_A)
+        self.central_widget.setCurrentWidget(results_screen_A) 
 
 
 
@@ -87,6 +104,39 @@ class StartScreen(QtGui.QWidget):
         self.setLayout(layout)
 
         self.buttonStartDemo.clicked.connect(self.parent().callbackStartDemoButton)
+
+
+class SelectUserScreen(QtGui.QWidget):
+    def __init__(self, parent=None):
+        super(SelectUserScreen, self).__init__(parent)
+        
+
+        layout = QtGui.QVBoxLayout()
+        layout.setSpacing(0);
+        layout.setContentsMargins(0, 0, 0, 0);
+        
+        # Add user buttons 
+        self.buttonUser1 = QtGui.QPushButton()
+        self.buttonUser1.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonUser1.setStyleSheet("QPushButton {background-image: url(%s/User1_but.png); background-position: center;}" % GUI_IMG_PATH)
+        layout.addWidget(self.buttonUser1,1)
+
+        self.buttonUser2 = QtGui.QPushButton()
+        self.buttonUser2.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonUser2.setStyleSheet("QPushButton {background-image: url(%s/User2_but.png); background-position: center;}" % GUI_IMG_PATH)
+        layout.addWidget(self.buttonUser2,1)
+
+        self.buttonUser3 = QtGui.QPushButton()
+        self.buttonUser3.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonUser3.setStyleSheet("QPushButton {background-image: url(%s/User3_but); background-position: center;}"  % GUI_IMG_PATH)
+        layout.addWidget(self.buttonUser3,1)
+
+        self.setLayout(layout)
+
+        self.buttonUser1.clicked.connect(self.parent().callbackUserButton)
+        self.buttonUser2.clicked.connect(self.parent().callbackUserButton)
+        self.buttonUser3.clicked.connect(self.parent().callbackUserButton)
+
 
 
 class ActivityOneScreen(QtGui.QWidget):
