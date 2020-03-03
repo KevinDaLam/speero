@@ -7,7 +7,7 @@ import binascii
 import sys
 import ctypes
 
-DEBUG_MESSAGES = True
+DEBUG_MESSAGES = False
 
 NUM_MOTORS = 2
 
@@ -45,7 +45,7 @@ class UARTDriver(object):
         self.ser.flushInput()
         print("Opened serial port")
 
-    def transmit(self, command_code, data=None):
+    def transmit(self, command_code, data=[]):
         '''
         Args:
             data (:obj:'list' of bytes / str: byte string literal / :obj:'bytearray'): 

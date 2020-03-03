@@ -1,12 +1,26 @@
 from PyQt4 import QtCore, QtGui
 #from PyQt4.QtWidgets import QApplication, QDialog, QVBoxLayout, QLabel
-import sys
 from PyQt4.QtGui import QPixmap
+import sys
 import time
-from maki_lib.mic.Mic import MicTransmitter
 import signal
 
+
+from maki_lib.mic.Mic import MicTransmitter
+from maki_driver.uart_driver import UARTDriver
+
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
+
+UART_PORT_NAME = "/dev/ttyUSB0"
+COMMAND_MOVE_HOME = b'\x01'
+COMMAND_MOVE_HAPPY = b'\x02'
+COMMAND_MOVE_EXCITED = b'\x03'
+COMMAND_MOVE_IDLE = b'\x04'
+COMMAND_MOVE_WAVE_HELLO = b'\x05'
+COMMAND_MOVE_HUG = b'\x06'
+COMMAND_MOVE_WOAH = b'\x07'
+COMMAND_MOVE_FORTNITE_DANCE = b'\x08'
+COMMAND_RESET_TORQUE_ENABLE = b'\xaa'
 
 class getResulsResponse(QtCore.QThread):
     def __init__(self, parent=None):
@@ -36,6 +50,9 @@ class MainWindow(QtGui.QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.setWindowTitle("Speero")  
         self.micTX = MicTransmitter()
+        self.uart = UARTDriver(UART_PORT_NAME, 57600)
+        print ("Waiting for Arbotix to Load...")
+        time.sleep(10)
 
         self.audio_device_index = self.micTX.micIO.search_audio_devices('USB PnP Audio Device: Audio (hw:1,0)')
         if not self.audio_device_index:
@@ -46,6 +63,9 @@ class MainWindow(QtGui.QMainWindow):
         self.micTX.connect('localhost', 900, 901)
         start_screen = StartScreen(self)
         self.central_widget.addWidget(start_screen)
+        self.uart.transmit(COMMAND_MOVE_WAVE_HELLO)
+        self.uart.transmit(COMMAND_MOVE_HOME)
+
 
         #Variable which carries the result
         self.result = 0
@@ -54,6 +74,8 @@ class MainWindow(QtGui.QMainWindow):
         user_screen = SelectUserScreen(self)
         self.central_widget.addWidget(user_screen)
         self.central_widget.setCurrentWidget(user_screen)
+        self.uart.transmit(COMMAND_MOVE_IDLE)
+        self.uart.transmit(COMMAND_MOVE_HOME)
     
     def callbackUserButton(self):
         act_screen = ActivityOneScreen(self)
