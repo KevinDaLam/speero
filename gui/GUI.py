@@ -97,7 +97,7 @@ class MainWindow(QtGui.QMainWindow):
         self.central_widget.setCurrentWidget(process_screen) 
 
         self.resp_thread = getResulsResponse(self)
-        self.connect(self.resp_thread, QtCore.SIGNAL("finished()"), self.callbackResultsScreen())
+        self.connect(self.resp_thread, QtCore.SIGNAL("finished()"), self.callbackResultsScreen)
         self.resp_thread.start()
 
     def callbackResultsScreen(self):
