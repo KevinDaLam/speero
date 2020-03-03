@@ -10,7 +10,8 @@ GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 
 class getResulsResponse(QtCore.QThread):
     def __init__(self, parent=None):
-        QtCore.QThread.__init__(self)
+        super(getResulsResponse, self).__init__(parent)
+        #QtCore.QThread.__init__(self)
 
     def __del__(self):
         self.wait()
