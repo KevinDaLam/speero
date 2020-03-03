@@ -22,6 +22,12 @@ class getResulsResponse(QtCore.QThread):
         #self.sleep(5)
         self.parent().micTX.sync_wait()
 
+        # Modify this depending on the result you get 
+        # 0 - Outstanding
+        # 1 - Excellent 
+        # 2 - Very Good  
+        self.parent().result = 1
+
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -40,6 +46,9 @@ class MainWindow(QtGui.QMainWindow):
         self.micTX.connect('localhost', 900, 901)
         start_screen = StartScreen(self)
         self.central_widget.addWidget(start_screen)
+
+        #Variable which carries the result
+        self.result = 0
 
     def callbackStartDemoButton(self):
         user_screen = SelectUserScreen(self)
@@ -66,14 +75,23 @@ class MainWindow(QtGui.QMainWindow):
         self.central_widget.setCurrentWidget(process_screen) 
 
         self.resp_thread = getResulsResponse(self)
-        self.connect(self.resp_thread, QtCore.SIGNAL("finished()"), self.callbackResultsScreen)
+        self.connect(self.resp_thread, QtCore.SIGNAL("finished()"), self.callbackResultsScreen())
         self.resp_thread.start()
 
     def callbackResultsScreen(self):
-        #TODO: change this to change appropriatly 
-        results_screen_A = ResultsScreenA(self)
-        self.central_widget.addWidget(results_screen_A)
-        self.central_widget.setCurrentWidget(results_screen_A) 
+        
+        if self.result == 0:
+            results_screen_A = ResultsScreenA(self)
+            self.central_widget.addWidget(results_screen_A)
+            self.central_widget.setCurrentWidget(results_screen_A) 
+        elif self.result == 1:
+            results_screen_B = ResultsScreenB(self)
+            self.central_widget.addWidget(results_screen_B)
+            self.central_widget.setCurrentWidget(results_screen_B) 
+        else: # result = 2
+            results_screen_C = ResultsScreenC(self)
+            self.central_widget.addWidget(results_screen_C)
+            self.central_widget.setCurrentWidget(results_screen_C)
 
 
 
@@ -258,6 +276,27 @@ class ResultsScreenB(QtGui.QWidget):
         layout.addWidget(self.label_results_text)
 
         self.setLayout(layout) 
+
+class ResultsScreenC(QtGui.QWidget):
+    def __init__(self, parent=None):
+        super(ResultsScreenC, self).__init__(parent)
+        
+
+        layout = QtGui.QVBoxLayout()
+        layout.setSpacing(0);
+        layout.setContentsMargins(0, 0, 0, 0);
+        
+        
+        self.results_text = QtGui.QPixmap("%s/resC.png" % GUI_IMG_PATH)
+                
+        self.results_text = self.results_text.scaled(800, 500, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        self.label_results_text = QtGui.QLabel()
+        self.label_results_text.setPixmap(self.results_text) 
+        self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
+        self.label_results_text.setStyleSheet("background-color: rgb(250,192,191);")
+        layout.addWidget(self.label_results_text)
+
+        self.setLayout(layout)
 
 
 if __name__ == '__main__':
