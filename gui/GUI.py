@@ -4,7 +4,7 @@ from PyQt4.QtGui import QPixmap
 import sys
 import time
 import signal
-import http.client
+import requests
 
 
 from maki_lib.mic.Mic import MicTransmitter
@@ -15,7 +15,7 @@ ENABLE_MAKI = False
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 AUDIO_FILE_PATH = "/home/maki/speero/gui/maki_lib/mic/scripts"
 
-SERVER_ENDPOINT = "my-json-server.typicode.com/KevinDaLam/json-test"
+SERVER_ENDPOINT = "https://my-json-server.typicode.com/KevinDaLam/json-test"
 
 UART_PORT_NAME = "/dev/ttyUSB0"
 COMMAND_MOVE_HOME = b'\x01'
@@ -27,6 +27,11 @@ COMMAND_MOVE_HUG = b'\x06'
 COMMAND_MOVE_WOAH = b'\x07'
 COMMAND_MOVE_FORTNITE_DANCE = b'\x08'
 COMMAND_RESET_TORQUE_ENABLE = b'\xaa'
+
+ERROR_RESULT = -1
+OUTSTANDING_RESULT = 0
+EXCELLENT_RESULT = 1
+VERY_GOOD_RESULT = 2
 
 class getResulsResponse(QtCore.QThread):
     def __init__(self, parent=None):
@@ -40,19 +45,23 @@ class getResulsResponse(QtCore.QThread):
         # HTTP Request -- using sync_wait() for now
         print('Waiting for HTTP request for results ...')
         #self.sleep(5)
-        self.parent().micTX.sync_wait()
+        # self.parent().micTX.sync_wait()
 
-        self.parent().http_client.request("GET", "/db")
+        r = requests.get(SERVER_ENDPOINT + "/patient_" + str(self.parent().patient_number))
+        if r.status_code == 200:
+            response_json = r.json()
+            score = int(response_json[max(k for k in response_json)]['score'])
+            print('Received Score: {}'.format(score))
+            if score >= 90:
+                self.parent().result = OUTSTANDING_RESULT
+            elif score >= 80:
+                self.parent().result = EXCELLENT_RESULT
+            else:
+                self.parent().result = VERY_GOOD_RESULT
+        else:
+            print('Unsuccessful HTTP Request: {}'.format(r.status_code))
+            self.parent().result = ERROR_RESULT
 
-        response = self.parent().http_client.getresponse()
-        # print("Status: {} and reason: {}".format(response.status, response.reason))
-        # print(response.read().decode())
-
-        # Modify this depending on the result you get 
-        # 0 - Outstanding
-        # 1 - Excellent 
-        # 2 - Very Good  
-        self.parent().result = 1
 
 class playAudio(QtCore.QThread):
     def __init__(self, parent=None): #audio_path):
@@ -66,7 +75,7 @@ class playAudio(QtCore.QThread):
         # HTTP Request -- using sync_wait() for now
         print('Playing audio file: ' + self.parent().audio_file)
         self.sleep(2)
-        self.parent().micTX.play(self.parent().audio_file)
+        # self.parent().micTX.micIO.play(self.parent().audio_file)
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
@@ -84,7 +93,7 @@ class MainWindow(QtGui.QMainWindow):
         else:
             print('Using audio device index %d' % self.audio_device_index)
 
-        self.micTX.connect('localhost', 900, 901)
+        # self.micTX.connect('localhost', 900, 901)
 
         if ENABLE_MAKI:
             self.uart = UARTDriver(UART_PORT_NAME, 57600)
@@ -103,6 +112,7 @@ class MainWindow(QtGui.QMainWindow):
 
         #Variable which carries the result
         self.result = 0
+        self.patient_number = None
 
     def callbackStartDemoButton(self):
         user_screen = SelectUserScreen(self)
@@ -117,24 +127,29 @@ class MainWindow(QtGui.QMainWindow):
             self.uart.transmit(COMMAND_MOVE_IDLE)
             self.uart.transmit(COMMAND_MOVE_HOME)
     
-    def callbackUserButton(self):
-        act_screen = ActivityOneScreen(self)
-        self.central_widget.addWidget(act_screen)
-        self.central_widget.setCurrentWidget(act_screen)
+    def callbackUserButton(self, patient_number):
 
-        # Play activity explination
-        self.audio_file = AUDIO_FILE_PATH + "/acitivty-one.wav"
-        self.audio_thread.start()
+        def callbackUser():
+            act_screen = ActivityOneScreen(self)
+            self.central_widget.addWidget(act_screen)
+            self.central_widget.setCurrentWidget(act_screen)
+
+            # Play activity explination
+            self.audio_file = AUDIO_FILE_PATH + "/activity-one.wav"
+            self.audio_thread.start()
+            self.patient_number = patient_number
+        
+        return callbackUser
 
     def callbackStartActButton(self):
         act1_screen = PlayActOneScreen(self)
         self.central_widget.addWidget(act1_screen)
         self.central_widget.setCurrentWidget(act1_screen)
 
-        self.micTX.start(device_index=self.audio_device_index)
+        # self.micTX.start(device_index=self.audio_device_index)
 
     def callbackFinishActButton(self):
-        self.micTX.stop()
+        # self.micTX.stop()
 
         process_screen = ProcessingScreen(self)
         self.central_widget.addWidget(process_screen)
@@ -144,9 +159,9 @@ class MainWindow(QtGui.QMainWindow):
         self.connect(self.resp_thread, QtCore.SIGNAL("finished()"), self.callbackResultsScreen)
         self.resp_thread.start()
 
-    def callbackResultsScreen(self):
+    def callbackResultsScreen(self, ):
         
-        if self.result == 0:
+        if self.result == OUTSTANDING_RESULT:
             results_screen_A = ResultsScreenA(self)
             self.central_widget.addWidget(results_screen_A)
             self.central_widget.setCurrentWidget(results_screen_A) 
@@ -155,7 +170,7 @@ class MainWindow(QtGui.QMainWindow):
             self.audio_file = AUDIO_FILE_PATH + "/results-outstanding.wav"
             self.audio_thread.start()
 
-        elif self.result == 1:
+        elif self.result == EXCELLENT_RESULT:
             results_screen_B = ResultsScreenB(self)
             self.central_widget.addWidget(results_screen_B)
             self.central_widget.setCurrentWidget(results_screen_B) 
@@ -164,7 +179,7 @@ class MainWindow(QtGui.QMainWindow):
             self.audio_file = AUDIO_FILE_PATH + "/results-excellent.wav"
             self.audio_thread.start()
 
-        else: # result = 2
+        elif self.result == VERY_GOOD_RESULT:
             results_screen_C = ResultsScreenC(self)
             self.central_widget.addWidget(results_screen_C)
             self.central_widget.setCurrentWidget(results_screen_C)
@@ -172,7 +187,10 @@ class MainWindow(QtGui.QMainWindow):
             # Play very good clip
             self.audio_file = AUDIO_FILE_PATH + "/results-very-good.wav"
             self.audio_thread.start()
-
+        else:
+            results_screen_error = ResultsScreenError(self)
+            self.central_widget.addWidget(results_screen_error)
+            self.central_widget.setCurrentWidget(results_screen_error)
 
 
 class StartScreen(QtGui.QWidget):
@@ -232,9 +250,9 @@ class SelectUserScreen(QtGui.QWidget):
 
         self.setLayout(layout)
 
-        self.buttonUser1.clicked.connect(self.parent().callbackUserButton)
-        self.buttonUser2.clicked.connect(self.parent().callbackUserButton)
-        self.buttonUser3.clicked.connect(self.parent().callbackUserButton)
+        self.buttonUser1.clicked.connect(self.parent().callbackUserButton(0))
+        self.buttonUser2.clicked.connect(self.parent().callbackUserButton(1))
+        self.buttonUser3.clicked.connect(self.parent().callbackUserButton(2))
 
 
 
@@ -374,6 +392,27 @@ class ResultsScreenC(QtGui.QWidget):
         self.label_results_text.setPixmap(self.results_text) 
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(250,192,191);")
+        layout.addWidget(self.label_results_text)
+
+        self.setLayout(layout)
+
+class ResultsScreenError(QtGui.QWidget):
+    def __init__(self, parent=None):
+        super(ResultsScreenError, self).__init__(parent)
+        
+
+        layout = QtGui.QVBoxLayout()
+        layout.setSpacing(0);
+        layout.setContentsMargins(0, 0, 0, 0);
+        
+        
+        self.results_text = QtGui.QPixmap("%s/resError.png" % GUI_IMG_PATH)
+                
+        self.results_text = self.results_text.scaled(800, 500, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        self.label_results_text = QtGui.QLabel()
+        self.label_results_text.setPixmap(self.results_text) 
+        self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
+        self.label_results_text.setStyleSheet("background-color: rgb(255,100,100);")
         layout.addWidget(self.label_results_text)
 
         self.setLayout(layout)
