@@ -4,13 +4,18 @@ from PyQt4.QtGui import QPixmap
 import sys
 import time
 import signal
+import http.client
 
 
 from maki_lib.mic.Mic import MicTransmitter
 from maki_driver.uart_driver import UARTDriver
 
+ENABLE_MAKI = False
+
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 AUDIO_FILE_PATH = "/home/maki/speero/gui/maki_lib/mic/scripts"
+
+SERVER_ENDPOINT = "my-json-server.typicode.com/KevinDaLam/json-test"
 
 UART_PORT_NAME = "/dev/ttyUSB0"
 COMMAND_MOVE_HOME = b'\x01'
@@ -36,6 +41,12 @@ class getResulsResponse(QtCore.QThread):
         print('Waiting for HTTP request for results ...')
         #self.sleep(5)
         self.parent().micTX.sync_wait()
+
+        self.parent().http_client.request("GET", "/db")
+
+        response = self.parent().http_client.getresponse()
+        # print("Status: {} and reason: {}".format(response.status, response.reason))
+        # print(response.read().decode())
 
         # Modify this depending on the result you get 
         # 0 - Outstanding
@@ -66,9 +77,6 @@ class MainWindow(QtGui.QMainWindow):
         self.setWindowTitle("Speero")  
 
         self.micTX = MicTransmitter()
-        self.uart = UARTDriver(UART_PORT_NAME, 57600)
-        print ("Waiting for Arbotix to Load...")
-        time.sleep(10)
 
         self.audio_device_index = self.micTX.micIO.search_audio_devices('USB PnP Audio Device: Audio (hw:1,0)')
         if not self.audio_device_index:
@@ -77,13 +85,16 @@ class MainWindow(QtGui.QMainWindow):
             print('Using audio device index %d' % self.audio_device_index)
 
         self.micTX.connect('localhost', 900, 901)
+
+        if ENABLE_MAKI:
+            self.uart = UARTDriver(UART_PORT_NAME, 57600)
+            print ("Waiting for Arbotix to Load...")
+            time.sleep(10)
+            self.uart.transmit(COMMAND_MOVE_WAVE_HELLO)
+            self.uart.transmit(COMMAND_MOVE_HOME)
+
         start_screen = StartScreen(self)
         self.central_widget.addWidget(start_screen)
-
-
-
-        self.uart.transmit(COMMAND_MOVE_WAVE_HELLO)
-        self.uart.transmit(COMMAND_MOVE_HOME)
 
         # Play demo intro audio
         self.audio_thread = playAudio(self)
@@ -102,8 +113,9 @@ class MainWindow(QtGui.QMainWindow):
         self.audio_file = AUDIO_FILE_PATH + "/select-a-user.wav"
         self.audio_thread.start()
 
-        self.uart.transmit(COMMAND_MOVE_IDLE)
-        self.uart.transmit(COMMAND_MOVE_HOME)
+        if ENABLE_MAKI:
+            self.uart.transmit(COMMAND_MOVE_IDLE)
+            self.uart.transmit(COMMAND_MOVE_HOME)
     
     def callbackUserButton(self):
         act_screen = ActivityOneScreen(self)
