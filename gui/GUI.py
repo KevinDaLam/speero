@@ -1,22 +1,23 @@
 from PyQt4 import QtCore, QtGui
-#from PyQt4.QtWidgets import QApplication, QDialog, QVBoxLayout, QLabel
-from PyQt4.QtGui import QPixmap
+from PyQt4.QtGui import QPixmap, QApplication
 import sys
 import time
 import signal
 import requests
 import os
+import base64
+import numpy as np
 
 
-from maki_lib.mic.Mic import MicTransmitter
+from maki_lib.mic.MicIO import MicIO
 from maki_driver.uart_driver import UARTDriver
 
-ENABLE_MAKI = True
+ENABLE_MAKI = False
 
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 AUDIO_FILE_PATH = "/home/maki/speero/gui/maki_lib/mic/scripts"
 
-SERVER_ENDPOINT = "https://my-json-server.typicode.com/KevinDaLam/json-test"
+SERVER_ENDPOINT = "http://35.173.217.2:3000"
 
 UART_PORT_NAME = "/dev/ttyUSB0"
 COMMAND_MOVE_HOME = b'\x01'
@@ -34,21 +35,37 @@ OUTSTANDING_RESULT = 0
 EXCELLENT_RESULT = 1
 VERY_GOOD_RESULT = 2
 
-class getResulsResponse(QtCore.QThread):
+class getResultsResponse(QtCore.QThread):
     def __init__(self, parent=None):
-        super(getResulsResponse, self).__init__(parent)
-        #QtCore.QThread.__init__(self)
+        super(getResultsResponse, self).__init__(parent)
 
     def __del__(self):
         self.wait()
 
     def run(self):
-        # HTTP Request -- using sync_wait() for now
         print('Waiting for HTTP request for results ...')
-        #self.sleep(5)
-        # self.parent().micTX.sync_wait()
 
-        r = requests.get(SERVER_ENDPOINT + "/patient_" + str(self.parent().patient_number))
+        with open(self.parent().wav_file_path, 'rb') as f:
+            audio_encoded = base64.b64encode(f.read())
+
+        audio_obj = {
+            "content": audio_encoded,
+            "sampleRate": 48000,
+            "encoding": "WAV",
+            "languageCode": "en-US",
+            "patient_id": "patient_" + str(self.parent().patient_number),
+        }
+
+        print("Sending post request for patient " + str(self.parent().patient_number))
+        r = requests.post(SERVER_ENDPOINT + "/audio", data = audio_obj)
+        if r.status_code == 201:
+            print('Success post request')
+            print(r.text)
+        else:
+            print('Unsuccessful HTTP Post: {}'.format(r.status_code))
+
+        print ("Sending get request for patient " + str(self.parent().patient_number))
+        r = requests.get(SERVER_ENDPOINT + "/patients/patient_" + str(self.parent().patient_number))
         if r.status_code == 200:
             response_json = r.json()
             score = int(response_json[max(k for k in response_json)]['score'])
@@ -60,7 +77,7 @@ class getResulsResponse(QtCore.QThread):
             else:
                 self.parent().result = VERY_GOOD_RESULT
         else:
-            print('Unsuccessful HTTP Request: {}'.format(r.status_code))
+            print('Unsuccessful HTTP Get: {}'.format(r.status_code))
             self.parent().result = ERROR_RESULT
 
 
@@ -73,12 +90,23 @@ class playAudio(QtCore.QThread):
         self.wait()
 
     def run(self):
-        # HTTP Request -- using sync_wait() for now
         print('Playing audio file: ' + self.parent().audio_file)
-        #self.sleep(2)
-
         os.system("aplay %s" % self.parent().audio_file)
-        # self.parent().micTX.micIO.play(self.parent().audio_file)
+
+class moveRobot(QtCore.QThread):
+    def __init__(self, parent=None):
+        super(moveRobot, self).__init__(parent)
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        print('Moving Robot: ' + str(self.parent().commands))
+        time.sleep(self.parent().command_delay)
+        for c in self.parent().commands:
+            self.parent().uart.transmit(c)
+        
+        
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
@@ -86,28 +114,27 @@ class MainWindow(QtGui.QMainWindow):
         self.central_widget = QtGui.QStackedWidget()
         self.setGeometry(0,0,800,480)
         self.setCentralWidget(self.central_widget)
-        self.setWindowTitle("Speero")  
+        self.setWindowTitle("Speero")
+        QApplication.setOverrideCursor(QtCore.Qt.BlankCursor)
 
-        #self.widget.setCursor(Qt)
+        self.micIO = MicIO()
+        self.recording = []
+        self.wav_file_path = "/tmp/recording.wav"
 
-        #Qt
-
-        self.micTX = MicTransmitter()
-
-        self.audio_device_index = self.micTX.micIO.search_audio_devices('USB PnP Audio Device: Audio (hw:1,0)')
+        self.audio_device_index = self.micIO.search_audio_devices('USB PnP Audio Device: Audio (hw:1,0)')
         if not self.audio_device_index:
             print('Could not find mic')
         else:
             print('Using audio device index %d' % self.audio_device_index)
 
-        # self.micTX.connect('localhost', 900, 901)
-
         if ENABLE_MAKI:
             self.uart = UARTDriver(UART_PORT_NAME, 57600)
             print ("Waiting for Arbotix to Load...")
             time.sleep(10)
-            self.uart.transmit(COMMAND_MOVE_WAVE_HELLO)
-            self.uart.transmit(COMMAND_MOVE_HOME)
+            self.robot_thread = moveRobot(self)
+            self.commands = [COMMAND_MOVE_WAVE_HELLO, COMMAND_MOVE_HOME]
+            self.command_delay = 10
+            self.robot_thread.start()
 
         start_screen = StartScreen(self)
         self.central_widget.addWidget(start_screen)
@@ -121,6 +148,10 @@ class MainWindow(QtGui.QMainWindow):
         self.result = 0
         self.patient_number = None
 
+    def callbackMicIO(self, data):
+        audio = np.frombuffer(data, dtype=np.int16).tolist()
+        self.recording += audio
+
     def callbackStartDemoButton(self):
         user_screen = SelectUserScreen(self)
         self.central_widget.addWidget(user_screen)
@@ -131,7 +162,7 @@ class MainWindow(QtGui.QMainWindow):
         self.audio_thread.start()
 
         if ENABLE_MAKI:
-            self.uart.transmit(COMMAND_MOVE_IDLE)
+            self.uart.transmit(COMMAND_MOVE_HUG)
             self.uart.transmit(COMMAND_MOVE_HOME)
     
     def callbackUserButton(self, patient_number):
@@ -145,6 +176,9 @@ class MainWindow(QtGui.QMainWindow):
             self.audio_file = AUDIO_FILE_PATH + "/activity-one.wav"
             self.audio_thread.start()
             self.patient_number = patient_number
+            if ENABLE_MAKI:
+                self.uart.transmit(COMMAND_MOVE_IDLE)
+                self.uart.transmit(COMMAND_MOVE_HOME)
         
         return callbackUser
 
@@ -153,20 +187,22 @@ class MainWindow(QtGui.QMainWindow):
         self.central_widget.addWidget(act1_screen)
         self.central_widget.setCurrentWidget(act1_screen)
 
-        # self.micTX.start(device_index=self.audio_device_index)
+        self.micIO.listen(self.callbackMicIO, device_index=self.audio_device_index)
 
     def callbackFinishActButton(self):
-        # self.micTX.stop()
+        self.micIO.stop()
+        self.micIO.save(self.wav_file_path, np.array(self.recording))
+        self.recording = []
 
         process_screen = ProcessingScreen(self)
         self.central_widget.addWidget(process_screen)
         self.central_widget.setCurrentWidget(process_screen) 
 
-        self.resp_thread = getResulsResponse(self)
+        self.resp_thread = getResultsResponse(self)
         self.connect(self.resp_thread, QtCore.SIGNAL("finished()"), self.callbackResultsScreen)
         self.resp_thread.start()
 
-    def callbackResultsScreen(self, ):
+    def callbackResultsScreen(self):
         
         if self.result == OUTSTANDING_RESULT:
             results_screen_A = ResultsScreenA(self)
@@ -176,6 +212,9 @@ class MainWindow(QtGui.QMainWindow):
             # Play outstanding clip
             self.audio_file = AUDIO_FILE_PATH + "/results-outstanding.wav"
             self.audio_thread.start()
+            if ENABLE_MAKI:
+                self.uart.transmit(COMMAND_MOVE_FORTNITE_DANCE)
+                self.uart.transmit(COMMAND_MOVE_HOME)
 
         elif self.result == EXCELLENT_RESULT:
             results_screen_B = ResultsScreenB(self)
@@ -185,6 +224,9 @@ class MainWindow(QtGui.QMainWindow):
             # Play excellent clip
             self.audio_file = AUDIO_FILE_PATH + "/results-excellent.wav"
             self.audio_thread.start()
+            if ENABLE_MAKI:
+                self.uart.transmit(COMMAND_MOVE_EXCITED)
+                self.uart.transmit(COMMAND_MOVE_HOME)
 
         elif self.result == VERY_GOOD_RESULT:
             results_screen_C = ResultsScreenC(self)
@@ -194,10 +236,16 @@ class MainWindow(QtGui.QMainWindow):
             # Play very good clip
             self.audio_file = AUDIO_FILE_PATH + "/results-very-good.wav"
             self.audio_thread.start()
+            if ENABLE_MAKI:
+                self.uart.transmit(COMMAND_MOVE_HAPPY)
+                self.uart.transmit(COMMAND_MOVE_HOME)
         else:
             results_screen_error = ResultsScreenError(self)
             self.central_widget.addWidget(results_screen_error)
             self.central_widget.setCurrentWidget(results_screen_error)
+            if ENABLE_MAKI:
+                self.uart.transmit(COMMAND_MOVE_WOAH)
+                self.uart.transmit(COMMAND_MOVE_HOME)
 
 
 class StartScreen(QtGui.QWidget):
