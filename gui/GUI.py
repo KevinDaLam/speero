@@ -17,7 +17,7 @@ ENABLE_MAKI = False
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 AUDIO_FILE_PATH = "/home/maki/speero/gui/maki_lib/mic/scripts"
 
-SERVER_ENDPOINT = "http://35.173.217.2:3000"
+SERVER_ENDPOINT = "http://34.227.60.171:3000"
 
 UART_PORT_NAME = "/dev/ttyUSB0"
 COMMAND_MOVE_HOME = b'\x01'
@@ -191,7 +191,9 @@ class MainWindow(QtGui.QMainWindow):
 
     def callbackFinishActButton(self):
         self.micIO.stop()
-        self.micIO.save(self.wav_file_path, np.array(self.recording))
+        self.recording = np.array(self.recording)
+        self.recording = self.recording.astype(np.int16)
+        self.micIO.save(self.wav_file_path, self.recording)
         self.recording = []
 
         process_screen = ProcessingScreen(self)
