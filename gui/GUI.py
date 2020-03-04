@@ -12,7 +12,7 @@ import numpy as np
 from maki_lib.mic.MicIO import MicIO
 from maki_driver.uart_driver import UARTDriver
 
-ENABLE_MAKI = False
+ENABLE_MAKI = True
 
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 AUDIO_FILE_PATH = "/home/maki/speero/gui/maki_lib/mic/scripts"
@@ -203,6 +203,9 @@ class MainWindow(QtGui.QMainWindow):
         self.resp_thread = getResultsResponse(self)
         self.connect(self.resp_thread, QtCore.SIGNAL("finished()"), self.callbackResultsScreen)
         self.resp_thread.start()
+
+        if ENABLE_MAKI:
+            self.uart.transmit(COMMAND_MOVE_WOAH)
 
     def callbackResultsScreen(self):
         
