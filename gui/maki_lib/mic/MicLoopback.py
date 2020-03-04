@@ -2,11 +2,12 @@ from MicIO import MicIO
 from MicFilter import MicFilter
 import numpy as np
 import argparse
+import time
 
 PNP_MIC = 'USB PnP Audio Device: Audio (hw:1,0)'
 #PNP_MIC = 'USB PnP Audio Device'
 PNP_MIC_MAX_INPUT_CHANNELS = 1
-FILTER_SPECS = '100,17000,4'
+FILTER_SPECS = '50,15000,4'
 
 recording = []
 def record(data):
@@ -61,6 +62,7 @@ def main():
     micFilter = MicFilter()
 
     input('Press any key to begin calibrating noise levels for %d second(s)' % noise_cal_s)
+    time.sleep(0.25)
     micFilter.calibrate_noise(seconds=noise_cal_s, device_id=device_id)
     print('Noise calibration finished')
 
@@ -69,6 +71,7 @@ def main():
             recording.clear()
 
             input('Press any key to begin recording')
+            time.sleep(0.25)
             micIO.listen(record, device_id)
 
             input('Recording... press any key to stop recording')
@@ -79,8 +82,9 @@ def main():
             micIO.save(output_wav, audio_unfiltered)
             print('Saved raw recording to %s' % output_wav)
 
-            audio_filtered = MicFilter.bandpass(recording, fs=MicIO.SamplingFrequency, lowf=filter_specs[0], highf=filter_specs[1], order=filter_specs[2])
-            audio_filtered = micFilter.trim_beginning_silence(audio_clip=audio_filtered)
+            #audio_filtered = MicFilter.bandpass(recording, fs=MicIO.SamplingFrequency, lowf=filter_specs[0], highf=filter_specs[1], order=filter_specs[2])
+            #audio_filtered = micFilter.trim_beginning_silence(audio_clip=audio_filtered)
+            audio_filtered = micFilter.trim_beginning_silence(audio_clip=np.array(recording).astype(np.float))
             audio_filtered = micFilter.remove_noise(audio_filtered)
             audio_filtered = audio_filtered.astype(np.int16)
 
