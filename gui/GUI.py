@@ -66,7 +66,7 @@ class playAudio(QtCore.QThread):
         # HTTP Request -- using sync_wait() for now
         print('Playing audio file: ' + self.parent().audio_file)
         self.sleep(2)
-        self.parent().micTX.play(self.parent().audio_file)
+        self.parent().micTX.micIO.play(self.parent().audio_file)
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
