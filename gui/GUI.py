@@ -10,6 +10,7 @@ from maki_lib.mic.Mic import MicTransmitter
 from maki_driver.uart_driver import UARTDriver
 
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
+AUDIO_FILE_PATH = "/home/maki/speero/gui/maki_lib/mic/scripts"
 
 UART_PORT_NAME = "/dev/ttyUSB0"
 COMMAND_MOVE_HOME = b'\x01'
@@ -42,6 +43,20 @@ class getResulsResponse(QtCore.QThread):
         # 2 - Very Good  
         self.parent().result = 1
 
+class playAudio(QtCore.QThread):
+    def __init__(self, parent=None) #audio_path):
+        super(playAudio, self).__init__(parent)
+        #self.audio_file = audio_path
+
+    def __del__(self):
+        self.wait()
+
+    def run(self):
+        # HTTP Request -- using sync_wait() for now
+        print('Playing audio file: ' + self.parent().audio_file)
+        self.sleep(2)
+        self.parent().micTX.play(self.parent().audio_file)
+
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -49,6 +64,7 @@ class MainWindow(QtGui.QMainWindow):
         self.setGeometry(0,0,800,480)
         self.setCentralWidget(self.central_widget)
         self.setWindowTitle("Speero")  
+
         self.micTX = MicTransmitter()
         self.uart = UARTDriver(UART_PORT_NAME, 57600)
         print ("Waiting for Arbotix to Load...")
@@ -63,9 +79,16 @@ class MainWindow(QtGui.QMainWindow):
         self.micTX.connect('localhost', 900, 901)
         start_screen = StartScreen(self)
         self.central_widget.addWidget(start_screen)
+
+
+
         self.uart.transmit(COMMAND_MOVE_WAVE_HELLO)
         self.uart.transmit(COMMAND_MOVE_HOME)
 
+        # Play demo intro audio
+        self.audio_thread = playAudio(self)
+        self.audio_file = AUDIO_FILE_PATH + "/start-demo.wav"
+        self.audio_thread.start()
 
         #Variable which carries the result
         self.result = 0
@@ -74,6 +97,11 @@ class MainWindow(QtGui.QMainWindow):
         user_screen = SelectUserScreen(self)
         self.central_widget.addWidget(user_screen)
         self.central_widget.setCurrentWidget(user_screen)
+
+        # Play selecte user audio
+        self.audio_file = AUDIO_FILE_PATH + "/select-a-user.wav"
+        self.audio_thread.start()
+
         self.uart.transmit(COMMAND_MOVE_IDLE)
         self.uart.transmit(COMMAND_MOVE_HOME)
     
@@ -81,6 +109,10 @@ class MainWindow(QtGui.QMainWindow):
         act_screen = ActivityOneScreen(self)
         self.central_widget.addWidget(act_screen)
         self.central_widget.setCurrentWidget(act_screen)
+
+        # Play activity explination
+        self.audio_file = AUDIO_FILE_PATH + "/acitivty-one.wav"
+        self.audio_thread.start()
 
     def callbackStartActButton(self):
         act1_screen = PlayActOneScreen(self)
@@ -106,14 +138,28 @@ class MainWindow(QtGui.QMainWindow):
             results_screen_A = ResultsScreenA(self)
             self.central_widget.addWidget(results_screen_A)
             self.central_widget.setCurrentWidget(results_screen_A) 
+
+            # Play outstanding clip
+            self.audio_file = AUDIO_FILE_PATH + "/results-outstanding.wav"
+            self.audio_thread.start()
+
         elif self.result == 1:
             results_screen_B = ResultsScreenB(self)
             self.central_widget.addWidget(results_screen_B)
             self.central_widget.setCurrentWidget(results_screen_B) 
+
+            # Play excellent clip
+            self.audio_file = AUDIO_FILE_PATH + "/results-excellent.wav"
+            self.audio_thread.start()
+
         else: # result = 2
             results_screen_C = ResultsScreenC(self)
             self.central_widget.addWidget(results_screen_C)
             self.central_widget.setCurrentWidget(results_screen_C)
+
+            # Play very good clip
+            self.audio_file = AUDIO_FILE_PATH + "/results-very-good.wav"
+            self.audio_thread.start()
 
 
 
