@@ -11,7 +11,7 @@ import os
 from maki_lib.mic.Mic import MicTransmitter
 from maki_driver.uart_driver import UARTDriver
 
-ENABLE_MAKI = False
+ENABLE_MAKI = True
 
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 AUDIO_FILE_PATH = "/home/maki/speero/gui/maki_lib/mic/scripts"
