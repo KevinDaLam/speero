@@ -5,6 +5,7 @@ import sys
 import time
 import signal
 import requests
+import os
 
 
 from maki_lib.mic.Mic import MicTransmitter
@@ -74,7 +75,9 @@ class playAudio(QtCore.QThread):
     def run(self):
         # HTTP Request -- using sync_wait() for now
         print('Playing audio file: ' + self.parent().audio_file)
-        self.sleep(2)
+        #self.sleep(2)
+
+        os.system("aplay %s" % self.parent().audio_file)
         # self.parent().micTX.micIO.play(self.parent().audio_file)
 
 class MainWindow(QtGui.QMainWindow):
@@ -84,6 +87,10 @@ class MainWindow(QtGui.QMainWindow):
         self.setGeometry(0,0,800,480)
         self.setCentralWidget(self.central_widget)
         self.setWindowTitle("Speero")  
+
+        #self.widget.setCursor(Qt)
+
+        #Qt
 
         self.micTX = MicTransmitter()
 
@@ -330,6 +337,7 @@ class ProcessingScreen(QtGui.QWidget):
         self.label_process_text.setStyleSheet("background-color: rgb(250,192,191);")
         layout.addWidget(self.label_process_text)
 
+
         self.setLayout(layout)   
 
 
@@ -350,9 +358,17 @@ class ResultsScreenA(QtGui.QWidget):
         self.label_results_text.setPixmap(self.results_text) 
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(250,192,191);")
-        layout.addWidget(self.label_results_text)
+        layout.addWidget(self.label_results_text, 2)
+
+        # Add return to user screen button
+        self.buttonReturnUser = QtGui.QPushButton()
+        self.buttonReturnUser.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonReturnUser.setStyleSheet("QPushButton {background-image: url(%s/return.png); background-position: center;}" % GUI_IMG_PATH)
+        layout.addWidget(self.buttonReturnUser, 1)
 
         self.setLayout(layout) 
+
+        self.buttonReturnUser.clicked.connect(self.parent().callbackStartDemoButton)
 
 class ResultsScreenB(QtGui.QWidget):
     def __init__(self, parent=None):
@@ -371,9 +387,17 @@ class ResultsScreenB(QtGui.QWidget):
         self.label_results_text.setPixmap(self.results_text) 
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(250,192,191);")
-        layout.addWidget(self.label_results_text)
+        layout.addWidget(self.label_results_text,2)
+
+        # Add return to user screen button
+        self.buttonReturnUser = QtGui.QPushButton()
+        self.buttonReturnUser.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonReturnUser.setStyleSheet("QPushButton {background-image: url(%s/return.png); background-position: center;}" % GUI_IMG_PATH)
+        layout.addWidget(self.buttonReturnUser, 1)
 
         self.setLayout(layout) 
+
+        self.buttonReturnUser.clicked.connect(self.parent().callbackStartDemoButton)
 
 class ResultsScreenC(QtGui.QWidget):
     def __init__(self, parent=None):
@@ -392,9 +416,17 @@ class ResultsScreenC(QtGui.QWidget):
         self.label_results_text.setPixmap(self.results_text) 
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(250,192,191);")
-        layout.addWidget(self.label_results_text)
+        layout.addWidget(self.label_results_text,2)
+
+        # Add return to user screen button
+        self.buttonReturnUser = QtGui.QPushButton()
+        self.buttonReturnUser.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonReturnUser.setStyleSheet("QPushButton {background-image: url(%s/return.png); background-position: center;}" % GUI_IMG_PATH)
+        layout.addWidget(self.buttonReturnUser, 1)
 
         self.setLayout(layout)
+
+        self.buttonReturnUser.clicked.connect(self.parent().callbackStartDemoButton)
 
 class ResultsScreenError(QtGui.QWidget):
     def __init__(self, parent=None):
@@ -414,6 +446,16 @@ class ResultsScreenError(QtGui.QWidget):
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(255,100,100);")
         layout.addWidget(self.label_results_text)
+
+        # Add return to user screen button
+        self.buttonReturnUser = QtGui.QPushButton()
+        self.buttonReturnUser.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonReturnUser.setStyleSheet("QPushButton {background-image: url(%s/return.png); background-position: center;}" % GUI_IMG_PATH)
+        layout.addWidget(self.buttonReturnUser, 1)
+
+        self.setLayout(layout)
+
+        self.buttonReturnUser.clicked.connect(self.parent().callbackStartDemoButton)
 
         self.setLayout(layout)
 
