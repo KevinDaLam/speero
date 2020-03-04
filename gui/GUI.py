@@ -44,7 +44,7 @@ class getResulsResponse(QtCore.QThread):
         self.parent().result = 1
 
 class playAudio(QtCore.QThread):
-    def __init__(self, parent=None) #audio_path):
+    def __init__(self, parent=None): #audio_path):
         super(playAudio, self).__init__(parent)
         #self.audio_file = audio_path
 
