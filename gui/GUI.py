@@ -17,7 +17,7 @@ ENABLE_MAKI = True
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 AUDIO_FILE_PATH = "/home/maki/speero/gui/maki_lib/mic/scripts"
 
-# SERVER_ENDPOINT = "http://34.227.60.171:3000"
+#SERVER_ENDPOINT = "http://34.227.60.171:3000"
 SERVER_ENDPOINT = "https://my-json-server.typicode.com/KevinDaLam/json-test"
 
 UART_PORT_NAME = "/dev/ttyUSB0"
@@ -134,7 +134,7 @@ class MainWindow(QtGui.QMainWindow):
             time.sleep(10)
             self.robot_thread = moveRobot(self)
             self.commands = [COMMAND_MOVE_WAVE_HELLO, COMMAND_MOVE_HOME]
-            self.command_delay = 10
+            self.command_delay = 3.5
             self.robot_thread.start()
 
         start_screen = StartScreen(self)
@@ -411,7 +411,7 @@ class ResultsScreenA(QtGui.QWidget):
         # Exit Button
         self.buttonExit = QtGui.QPushButton()
         self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
-        self.buttonExit.setStyleSheet("background-color: rgb(255,100,100);")
+        self.buttonExit.setStyleSheet("background-color: rgb(228,230,229);")
         layout.addWidget(self.buttonExit, 2)
         
         
@@ -448,7 +448,7 @@ class ResultsScreenB(QtGui.QWidget):
        # Exit Button
         self.buttonExit = QtGui.QPushButton()
         self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
-        self.buttonExit.setStyleSheet("background-color: rgb(255,100,100);")
+        self.buttonExit.setStyleSheet("background-color: rgb(228,230,229);")
         layout.addWidget(self.buttonExit, 2)
         
         
@@ -484,7 +484,7 @@ class ResultsScreenC(QtGui.QWidget):
         # Exit Button
         self.buttonExit = QtGui.QPushButton()
         self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
-        self.buttonExit.setStyleSheet("background-color: rgb(255,100,100);")
+        self.buttonExit.setStyleSheet("background-color: rgb(228,230,229);")
         layout.addWidget(self.buttonExit, 2)
         
         
@@ -520,7 +520,7 @@ class ResultsScreenError(QtGui.QWidget):
         # Exit Button
         self.buttonExit = QtGui.QPushButton()
         self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
-        self.buttonExit.setStyleSheet("background-color: rgb(255,100,100);")
+        self.buttonExit.setStyleSheet("background-color: rgb(228,230,229);")
         layout.addWidget(self.buttonExit, 2)
         
         
