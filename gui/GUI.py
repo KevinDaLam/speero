@@ -37,7 +37,7 @@ EXCELLENT_RESULT = 1
 VERY_GOOD_RESULT = 2
 
 OUTSTANDING_THRESHOLD = 80
-EXCELLENT_THRESHOLD = 65
+EXCELLENT_THRESHOLD = 75
 
 class getResultsResponse(QtCore.QThread):
     def __init__(self, parent=None):
@@ -72,7 +72,7 @@ class getResultsResponse(QtCore.QThread):
         r = requests.get(SERVER_ENDPOINT + "/metric/patient_" + str(self.parent().patient_number))
         if r.status_code == 200:
             response_json = r.json()
-            score = int(response_json[max(k for k in response_json)]['score'])
+            score = int(response_json[str(max(int(k) for k in response_json))]['score'])
             print('Received Score: {}'.format(score))
             if score >= OUTSTANDING_THRESHOLD:
                 self.parent().result = OUTSTANDING_RESULT
@@ -148,7 +148,7 @@ class MainWindow(QtGui.QMainWindow):
         self.audio_thread.start()
 
         #Variable which carries the result
-        self.result = 0
+        self.result = -1
         self.patient_number = None
 
     def callbackMicIO(self, data):
@@ -239,7 +239,6 @@ class MainWindow(QtGui.QMainWindow):
             self.audio_thread.start()
             if ENABLE_MAKI:
                 self.uart.transmit(COMMAND_MOVE_EXCITED)
-                self.uart.transmit(COMMAND_MOVE_HOME)
 
         elif self.result == VERY_GOOD_RESULT:
             results_screen_C = ResultsScreenC(self)
@@ -251,14 +250,12 @@ class MainWindow(QtGui.QMainWindow):
             self.audio_thread.start()
             if ENABLE_MAKI:
                 self.uart.transmit(COMMAND_MOVE_HAPPY)
-                self.uart.transmit(COMMAND_MOVE_HOME)
         else:
             results_screen_error = ResultsScreenError(self)
             self.central_widget.addWidget(results_screen_error)
             self.central_widget.setCurrentWidget(results_screen_error)
             if ENABLE_MAKI:
                 self.uart.transmit(COMMAND_MOVE_WOAH)
-                self.uart.transmit(COMMAND_MOVE_HOME)
 
     def callbackExitButton(self):
         self.resp_thread.exit()
