@@ -7,7 +7,7 @@ import requests
 import os
 import base64
 import numpy as np
-
+from random import shuffle
 
 from maki_lib.mic.MicIO import MicIO
 from maki_driver.uart_driver import UARTDriver
@@ -17,8 +17,8 @@ ENABLE_MAKI = True
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 AUDIO_FILE_PATH = "/home/maki/speero/gui/maki_lib/mic/scripts"
 
-#SERVER_ENDPOINT = "http://34.227.60.171:3000"
-SERVER_ENDPOINT = "https://my-json-server.typicode.com/KevinDaLam/json-test"
+SERVER_ENDPOINT = "http://3.89.211.71:3000"
+# SERVER_ENDPOINT = "https://my-json-server.typicode.com/KevinDaLam/json-test"
 
 UART_PORT_NAME = "/dev/ttyUSB0"
 COMMAND_MOVE_HOME = b'\x01'
@@ -35,6 +35,9 @@ ERROR_RESULT = -1
 OUTSTANDING_RESULT = 0
 EXCELLENT_RESULT = 1
 VERY_GOOD_RESULT = 2
+
+OUTSTANDING_THRESHOLD = 80
+EXCELLENT_THRESHOLD = 65
 
 class getResultsResponse(QtCore.QThread):
     def __init__(self, parent=None):
@@ -66,14 +69,14 @@ class getResultsResponse(QtCore.QThread):
             print('Unsuccessful HTTP Post: {}'.format(r.status_code))
 
         print ("Sending get request for patient " + str(self.parent().patient_number))
-        r = requests.get(SERVER_ENDPOINT + "/patients/patient_" + str(self.parent().patient_number))
+        r = requests.get(SERVER_ENDPOINT + "/metric/patient_" + str(self.parent().patient_number))
         if r.status_code == 200:
             response_json = r.json()
             score = int(response_json[max(k for k in response_json)]['score'])
             print('Received Score: {}'.format(score))
-            if score >= 90:
+            if score >= OUTSTANDING_THRESHOLD:
                 self.parent().result = OUTSTANDING_RESULT
-            elif score >= 80:
+            elif score >= EXCELLENT_THRESHOLD:
                 self.parent().result = EXCELLENT_RESULT
             else:
                 self.parent().result = VERY_GOOD_RESULT
@@ -106,8 +109,7 @@ class moveRobot(QtCore.QThread):
         time.sleep(self.parent().command_delay)
         for c in self.parent().commands:
             self.parent().uart.transmit(c)
-        
-        
+            time.sleep(self.parent().command_delay)
 
 class MainWindow(QtGui.QMainWindow):
     def __init__(self, parent=None):
@@ -165,7 +167,7 @@ class MainWindow(QtGui.QMainWindow):
         if ENABLE_MAKI:
             self.uart.transmit(COMMAND_MOVE_HUG)
             self.uart.transmit(COMMAND_MOVE_HOME)
-    
+
     def callbackUserButton(self, patient_number):
 
         def callbackUser():
@@ -180,7 +182,7 @@ class MainWindow(QtGui.QMainWindow):
             if ENABLE_MAKI:
                 self.uart.transmit(COMMAND_MOVE_IDLE)
                 self.uart.transmit(COMMAND_MOVE_HOME)
-        
+
         return callbackUser
 
     def callbackStartActButton(self):
@@ -199,7 +201,7 @@ class MainWindow(QtGui.QMainWindow):
 
         process_screen = ProcessingScreen(self)
         self.central_widget.addWidget(process_screen)
-        self.central_widget.setCurrentWidget(process_screen) 
+        self.central_widget.setCurrentWidget(process_screen)
 
         self.resp_thread = getResultsResponse(self)
         self.connect(self.resp_thread, QtCore.SIGNAL("finished()"), self.callbackResultsScreen)
@@ -207,13 +209,18 @@ class MainWindow(QtGui.QMainWindow):
 
         if ENABLE_MAKI:
             self.uart.transmit(COMMAND_MOVE_WOAH)
+            self.robot_thread = moveRobot(self)
+            self.commands = [COMMAND_MOVE_IDLE, COMMAND_MOVE_HUG, COMMAND_MOVE_HOME]
+            shuffle(self.commands)
+            self.command_delay = 3
+            self.robot_thread.start()
 
     def callbackResultsScreen(self):
-        
+
         if self.result == OUTSTANDING_RESULT:
             results_screen_A = ResultsScreenA(self)
             self.central_widget.addWidget(results_screen_A)
-            self.central_widget.setCurrentWidget(results_screen_A) 
+            self.central_widget.setCurrentWidget(results_screen_A)
 
             # Play outstanding clip
             self.audio_file = AUDIO_FILE_PATH + "/results-outstanding.wav"
@@ -225,7 +232,7 @@ class MainWindow(QtGui.QMainWindow):
         elif self.result == EXCELLENT_RESULT:
             results_screen_B = ResultsScreenB(self)
             self.central_widget.addWidget(results_screen_B)
-            self.central_widget.setCurrentWidget(results_screen_B) 
+            self.central_widget.setCurrentWidget(results_screen_B)
 
             # Play excellent clip
             self.audio_file = AUDIO_FILE_PATH + "/results-excellent.wav"
@@ -252,7 +259,7 @@ class MainWindow(QtGui.QMainWindow):
             if ENABLE_MAKI:
                 self.uart.transmit(COMMAND_MOVE_WOAH)
                 self.uart.transmit(COMMAND_MOVE_HOME)
-    
+
     def callbackExitButton(self):
         self.resp_thread.exit()
         self.audio_thread.exit()
@@ -265,14 +272,14 @@ class StartScreen(QtGui.QWidget):
         layout = QtGui.QHBoxLayout()
         layout.setSpacing(0);
         layout.setContentsMargins(0, 0, 0, 0);
-        
 
-        # Add logo 
+
+        # Add logo
         self.logo = QtGui.QPixmap("%s/Logo-tshirt-pt1-cp.png" % GUI_IMG_PATH)
         self.logo = self.logo.scaled(500, 400, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         self.label_logo = QtGui.QLabel()
         #self.label_logo.setGeometry(20,20,10,10)
-        self.label_logo.setPixmap(self.logo) 
+        self.label_logo.setPixmap(self.logo)
         self.label_logo.setStyleSheet("background-color: rgb(250,192,191);")
         layout.addWidget(self.label_logo, 2)
 
@@ -292,13 +299,13 @@ class StartScreen(QtGui.QWidget):
 class SelectUserScreen(QtGui.QWidget):
     def __init__(self, parent=None):
         super(SelectUserScreen, self).__init__(parent)
-        
+
 
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
         layout.setContentsMargins(0, 0, 0, 0);
-        
-        # Add user buttons 
+
+        # Add user buttons
         self.buttonUser1 = QtGui.QPushButton()
         self.buttonUser1.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.buttonUser1.setStyleSheet("QPushButton {background-image: url(%s/User1_but.png); background-position: center;}" % GUI_IMG_PATH)
@@ -325,18 +332,18 @@ class SelectUserScreen(QtGui.QWidget):
 class ActivityOneScreen(QtGui.QWidget):
     def __init__(self, parent=None):
         super(ActivityOneScreen, self).__init__(parent)
-        
+
 
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
         layout.setContentsMargins(0, 0, 0, 0);
-        
-        # Add activity banner 
+
+        # Add activity banner
         self.act1 = QtGui.QPixmap("%s/activity1.png" % GUI_IMG_PATH)
         self.act1 = self.act1.scaled(800, 500, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         self.label_act1 = QtGui.QLabel()
         #self.label_logo.setGeometry(20,20,10,10)
-        self.label_act1.setPixmap(self.act1) 
+        self.label_act1.setPixmap(self.act1)
         self.label_act1.setAlignment(QtCore.Qt.AlignCenter);
         #self.label_act1.resize(400, 160)
         layout.addWidget(self.label_act1, 2)
@@ -354,17 +361,17 @@ class ActivityOneScreen(QtGui.QWidget):
 class PlayActOneScreen(QtGui.QWidget):
     def __init__(self, parent=None):
         super(PlayActOneScreen, self).__init__(parent)
-        
+
 
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
         layout.setContentsMargins(0, 0, 0, 0);
-        
-        # Add activity text 
+
+        # Add activity text
         self.act1_text = QtGui.QPixmap("%s/Play-act-1-1.png" % GUI_IMG_PATH)
         self.act1_text = self.act1_text.scaled(800, 500, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         self.label_act1_text = QtGui.QLabel()
-        self.label_act1_text.setPixmap(self.act1_text) 
+        self.label_act1_text.setPixmap(self.act1_text)
         self.label_act1_text.setAlignment(QtCore.Qt.AlignCenter);
         layout.addWidget(self.label_act1_text, 3)
 
@@ -374,14 +381,14 @@ class PlayActOneScreen(QtGui.QWidget):
         self.buttonFinishAct.setStyleSheet("QPushButton {background-image: url(%s/finish-acitivty.png); background-position: center;}" % GUI_IMG_PATH)
         layout.addWidget(self.buttonFinishAct, 1)
 
-        self.setLayout(layout)     
+        self.setLayout(layout)
 
         self.buttonFinishAct.clicked.connect(self.parent().callbackFinishActButton)
 
 class ProcessingScreen(QtGui.QWidget):
     def __init__(self, parent=None):
         super(ProcessingScreen, self).__init__(parent)
-        
+
 
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
@@ -392,16 +399,16 @@ class ProcessingScreen(QtGui.QWidget):
         self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.buttonExit.setStyleSheet("QPushButton {background-image: url(%s/processing.png); background-position: center;}" % GUI_IMG_PATH)
         layout.addWidget(self.buttonExit)
-        
-        self.setLayout(layout)  
 
-        self.buttonExit.clicked.connect(self.parent().callbackExitButton) 
+        self.setLayout(layout)
+
+        self.buttonExit.clicked.connect(self.parent().callbackExitButton)
 
 
 class ResultsScreenA(QtGui.QWidget):
     def __init__(self, parent=None):
         super(ResultsScreenA, self).__init__(parent)
-        
+
 
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
@@ -412,13 +419,13 @@ class ResultsScreenA(QtGui.QWidget):
         self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.buttonExit.setStyleSheet("background-color: rgb(228,230,229);")
         layout.addWidget(self.buttonExit, 2)
-        
-        
+
+
         self.results_text = QtGui.QPixmap("%s/resA.png" % GUI_IMG_PATH)
-                
+
         self.results_text = self.results_text.scaled(800, 500, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         self.label_results_text = QtGui.QLabel()
-        self.label_results_text.setPixmap(self.results_text) 
+        self.label_results_text.setPixmap(self.results_text)
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(250,192,191);")
         layout.addWidget(self.label_results_text, 4)
@@ -429,33 +436,33 @@ class ResultsScreenA(QtGui.QWidget):
         self.buttonReturnUser.setStyleSheet("QPushButton {background-image: url(%s/return.png); background-position: center;}" % GUI_IMG_PATH)
         layout.addWidget(self.buttonReturnUser, 2)
 
-        self.setLayout(layout) 
+        self.setLayout(layout)
 
         self.buttonReturnUser.clicked.connect(self.parent().callbackStartDemoButton)
-        self.buttonExit.clicked.connect(self.parent().callbackExitButton)
+        #self.buttonExit.clicked.connect(self.parent().callbackExitButton)
 
 class ResultsScreenB(QtGui.QWidget):
     def __init__(self, parent=None):
         super(ResultsScreenB, self).__init__(parent)
-        
+
 
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
         layout.setContentsMargins(0, 0, 0, 0);
-    
+
 
        # Exit Button
         self.buttonExit = QtGui.QPushButton()
         self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.buttonExit.setStyleSheet("background-color: rgb(228,230,229);")
         layout.addWidget(self.buttonExit, 2)
-        
-        
+
+
         self.results_text = QtGui.QPixmap("%s/resB.png" % GUI_IMG_PATH)
-                
+
         self.results_text = self.results_text.scaled(800, 500, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         self.label_results_text = QtGui.QLabel()
-        self.label_results_text.setPixmap(self.results_text) 
+        self.label_results_text.setPixmap(self.results_text)
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(250,192,191);")
         layout.addWidget(self.label_results_text,4)
@@ -466,7 +473,7 @@ class ResultsScreenB(QtGui.QWidget):
         self.buttonReturnUser.setStyleSheet("QPushButton {background-image: url(%s/return.png); background-position: center;}" % GUI_IMG_PATH)
         layout.addWidget(self.buttonReturnUser, 2)
 
-        self.setLayout(layout) 
+        self.setLayout(layout)
 
         self.buttonReturnUser.clicked.connect(self.parent().callbackStartDemoButton)
         self.buttonExit.clicked.connect(self.parent().callbackExitButton)
@@ -474,7 +481,7 @@ class ResultsScreenB(QtGui.QWidget):
 class ResultsScreenC(QtGui.QWidget):
     def __init__(self, parent=None):
         super(ResultsScreenC, self).__init__(parent)
-        
+
 
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
@@ -485,13 +492,13 @@ class ResultsScreenC(QtGui.QWidget):
         self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.buttonExit.setStyleSheet("background-color: rgb(228,230,229);")
         layout.addWidget(self.buttonExit, 2)
-        
-        
+
+
         self.results_text = QtGui.QPixmap("%s/resC.png" % GUI_IMG_PATH)
-                
+
         self.results_text = self.results_text.scaled(800, 500, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         self.label_results_text = QtGui.QLabel()
-        self.label_results_text.setPixmap(self.results_text) 
+        self.label_results_text.setPixmap(self.results_text)
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(250,192,191);")
         layout.addWidget(self.label_results_text,4)
@@ -510,7 +517,7 @@ class ResultsScreenC(QtGui.QWidget):
 class ResultsScreenError(QtGui.QWidget):
     def __init__(self, parent=None):
         super(ResultsScreenError, self).__init__(parent)
-        
+
 
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
@@ -521,13 +528,13 @@ class ResultsScreenError(QtGui.QWidget):
         self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.buttonExit.setStyleSheet("background-color: rgb(228,230,229);")
         layout.addWidget(self.buttonExit, 2)
-        
-        
+
+
         self.results_text = QtGui.QPixmap("%s/resError.png" % GUI_IMG_PATH)
-                
+
         self.results_text = self.results_text.scaled(800, 500, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         self.label_results_text = QtGui.QLabel()
-        self.label_results_text.setPixmap(self.results_text) 
+        self.label_results_text.setPixmap(self.results_text)
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(255,100,100);")
         layout.addWidget(self.label_results_text, 4)
@@ -548,7 +555,7 @@ if __name__ == '__main__':
     app = QtGui.QApplication([])
     window = MainWindow()
     window.show()
-    
+
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     app.exec_()
