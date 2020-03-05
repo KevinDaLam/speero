@@ -17,7 +17,8 @@ ENABLE_MAKI = True
 GUI_IMG_PATH = "/home/maki/speero/gui/GUI-IMG"
 AUDIO_FILE_PATH = "/home/maki/speero/gui/maki_lib/mic/scripts"
 
-SERVER_ENDPOINT = "http://34.227.60.171:3000"
+# SERVER_ENDPOINT = "http://34.227.60.171:3000"
+SERVER_ENDPOINT = "https://my-json-server.typicode.com/KevinDaLam/json-test"
 
 UART_PORT_NAME = "/dev/ttyUSB0"
 COMMAND_MOVE_HOME = b'\x01'
@@ -119,7 +120,7 @@ class MainWindow(QtGui.QMainWindow):
 
         self.micIO = MicIO()
         self.recording = []
-        self.wav_file_path = "/tmp/recording.wav"
+        self.wav_file_path = "/home/maki/recording.wav"
 
         self.audio_device_index = self.micIO.search_audio_devices('USB PnP Audio Device: Audio (hw:1,0)')
         if not self.audio_device_index:
@@ -251,6 +252,10 @@ class MainWindow(QtGui.QMainWindow):
             if ENABLE_MAKI:
                 self.uart.transmit(COMMAND_MOVE_WOAH)
                 self.uart.transmit(COMMAND_MOVE_HOME)
+    
+    def callbackExitButton(self):
+        self.resp_thread.exit()
+        self.close()
 
 
 class StartScreen(QtGui.QWidget):
@@ -355,7 +360,7 @@ class PlayActOneScreen(QtGui.QWidget):
         layout.setContentsMargins(0, 0, 0, 0);
         
         # Add activity text 
-        self.act1_text = QtGui.QPixmap("%s/Play-act-1.png" % GUI_IMG_PATH)
+        self.act1_text = QtGui.QPixmap("%s/Play-act-1-1.png" % GUI_IMG_PATH)
         self.act1_text = self.act1_text.scaled(800, 500, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         self.label_act1_text = QtGui.QLabel()
         self.label_act1_text.setPixmap(self.act1_text) 
@@ -402,6 +407,12 @@ class ResultsScreenA(QtGui.QWidget):
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
         layout.setContentsMargins(0, 0, 0, 0);
+
+        # Exit Button
+        self.buttonExit = QtGui.QPushButton()
+        self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonExit.setStyleSheet("background-color: rgb(255,100,100);")
+        layout.addWidget(self.buttonExit, 2)
         
         
         self.results_text = QtGui.QPixmap("%s/resA.png" % GUI_IMG_PATH)
@@ -411,17 +422,18 @@ class ResultsScreenA(QtGui.QWidget):
         self.label_results_text.setPixmap(self.results_text) 
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(250,192,191);")
-        layout.addWidget(self.label_results_text, 2)
+        layout.addWidget(self.label_results_text, 4)
 
         # Add return to user screen button
         self.buttonReturnUser = QtGui.QPushButton()
         self.buttonReturnUser.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.buttonReturnUser.setStyleSheet("QPushButton {background-image: url(%s/return.png); background-position: center;}" % GUI_IMG_PATH)
-        layout.addWidget(self.buttonReturnUser, 1)
+        layout.addWidget(self.buttonReturnUser, 2)
 
         self.setLayout(layout) 
 
         self.buttonReturnUser.clicked.connect(self.parent().callbackStartDemoButton)
+        self.buttonExit.clicked.connect(self.parent().callbackExitButton)
 
 class ResultsScreenB(QtGui.QWidget):
     def __init__(self, parent=None):
@@ -431,6 +443,13 @@ class ResultsScreenB(QtGui.QWidget):
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
         layout.setContentsMargins(0, 0, 0, 0);
+    
+
+       # Exit Button
+        self.buttonExit = QtGui.QPushButton()
+        self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonExit.setStyleSheet("background-color: rgb(255,100,100);")
+        layout.addWidget(self.buttonExit, 2)
         
         
         self.results_text = QtGui.QPixmap("%s/resB.png" % GUI_IMG_PATH)
@@ -440,17 +459,18 @@ class ResultsScreenB(QtGui.QWidget):
         self.label_results_text.setPixmap(self.results_text) 
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(250,192,191);")
-        layout.addWidget(self.label_results_text,2)
+        layout.addWidget(self.label_results_text,4)
 
         # Add return to user screen button
         self.buttonReturnUser = QtGui.QPushButton()
         self.buttonReturnUser.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.buttonReturnUser.setStyleSheet("QPushButton {background-image: url(%s/return.png); background-position: center;}" % GUI_IMG_PATH)
-        layout.addWidget(self.buttonReturnUser, 1)
+        layout.addWidget(self.buttonReturnUser, 2)
 
         self.setLayout(layout) 
 
         self.buttonReturnUser.clicked.connect(self.parent().callbackStartDemoButton)
+        self.buttonExit.clicked.connect(self.parent().callbackExitButton)
 
 class ResultsScreenC(QtGui.QWidget):
     def __init__(self, parent=None):
@@ -460,6 +480,12 @@ class ResultsScreenC(QtGui.QWidget):
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
         layout.setContentsMargins(0, 0, 0, 0);
+
+        # Exit Button
+        self.buttonExit = QtGui.QPushButton()
+        self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonExit.setStyleSheet("background-color: rgb(255,100,100);")
+        layout.addWidget(self.buttonExit, 2)
         
         
         self.results_text = QtGui.QPixmap("%s/resC.png" % GUI_IMG_PATH)
@@ -469,17 +495,18 @@ class ResultsScreenC(QtGui.QWidget):
         self.label_results_text.setPixmap(self.results_text) 
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(250,192,191);")
-        layout.addWidget(self.label_results_text,2)
+        layout.addWidget(self.label_results_text,4)
 
         # Add return to user screen button
         self.buttonReturnUser = QtGui.QPushButton()
         self.buttonReturnUser.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.buttonReturnUser.setStyleSheet("QPushButton {background-image: url(%s/return.png); background-position: center;}" % GUI_IMG_PATH)
-        layout.addWidget(self.buttonReturnUser, 1)
+        layout.addWidget(self.buttonReturnUser, 2)
 
         self.setLayout(layout)
 
         self.buttonReturnUser.clicked.connect(self.parent().callbackStartDemoButton)
+        self.buttonExit.clicked.connect(self.parent().callbackExitButton)
 
 class ResultsScreenError(QtGui.QWidget):
     def __init__(self, parent=None):
@@ -489,6 +516,12 @@ class ResultsScreenError(QtGui.QWidget):
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
         layout.setContentsMargins(0, 0, 0, 0);
+
+        # Exit Button
+        self.buttonExit = QtGui.QPushButton()
+        self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonExit.setStyleSheet("background-color: rgb(255,100,100);")
+        layout.addWidget(self.buttonExit, 2)
         
         
         self.results_text = QtGui.QPixmap("%s/resError.png" % GUI_IMG_PATH)
@@ -498,19 +531,18 @@ class ResultsScreenError(QtGui.QWidget):
         self.label_results_text.setPixmap(self.results_text) 
         self.label_results_text.setAlignment(QtCore.Qt.AlignCenter);
         self.label_results_text.setStyleSheet("background-color: rgb(255,100,100);")
-        layout.addWidget(self.label_results_text)
+        layout.addWidget(self.label_results_text, 4)
 
         # Add return to user screen button
         self.buttonReturnUser = QtGui.QPushButton()
         self.buttonReturnUser.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
         self.buttonReturnUser.setStyleSheet("QPushButton {background-image: url(%s/return.png); background-position: center;}" % GUI_IMG_PATH)
-        layout.addWidget(self.buttonReturnUser, 1)
+        layout.addWidget(self.buttonReturnUser, 2)
 
         self.setLayout(layout)
 
         self.buttonReturnUser.clicked.connect(self.parent().callbackStartDemoButton)
-
-        self.setLayout(layout)
+        self.buttonExit.clicked.connect(self.parent().callbackExitButton)
 
 
 if __name__ == '__main__':
