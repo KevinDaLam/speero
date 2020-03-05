@@ -255,6 +255,7 @@ class MainWindow(QtGui.QMainWindow):
     
     def callbackExitButton(self):
         self.resp_thread.exit()
+        self.audio_thread.exit()
         self.close()
 
 
@@ -385,18 +386,16 @@ class ProcessingScreen(QtGui.QWidget):
         layout = QtGui.QVBoxLayout()
         layout.setSpacing(0);
         layout.setContentsMargins(0, 0, 0, 0);
+
+        # Make processing button
+        self.buttonExit = QtGui.QPushButton()
+        self.buttonExit.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Expanding)
+        self.buttonExit.setStyleSheet("QPushButton {background-image: url(%s/processing.png); background-position: center;}" % GUI_IMG_PATH)
+        layout.addWidget(self.buttonExit)
         
-        # Add activity text 
-        self.process_text = QtGui.QPixmap("%s/processing.png" % GUI_IMG_PATH)
-        self.process_text = self.process_text.scaled(800, 500, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
-        self.label_process_text = QtGui.QLabel()
-        self.label_process_text.setPixmap(self.process_text) 
-        self.label_process_text.setAlignment(QtCore.Qt.AlignCenter);
-        self.label_process_text.setStyleSheet("background-color: rgb(250,192,191);")
-        layout.addWidget(self.label_process_text)
+        self.setLayout(layout)  
 
-
-        self.setLayout(layout)   
+        self.buttonExit.clicked.connect(self.parent().callbackExitButton) 
 
 
 class ResultsScreenA(QtGui.QWidget):
